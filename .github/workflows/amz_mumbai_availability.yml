@@ -1,0 +1,63 @@
+name: Amz_Mumbai_Availability_Scrapper
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # daily at 6 AM UTC
+  workflow_dispatch:       # manual trigger
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ✅ Step 1: Setup SSH to access private repo
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+      # ✅ Step 2: Clone private repo
+      - name: Clone private repo
+        run: |
+          git clone git@github.com:LongwayDataTeam/Amz_Mumbai_Availability_pvt.git
+
+      # ✅ Step 3: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      # ✅ Step 4: Install dependencies
+      - name: Install dependencies
+        run: |
+          cd Amz_Mumbai_Availability_pvt
+          pip install --upgrade pip
+          pip install gspread oauth2client pandas openpyxl selenium webdriver-manager beautifulsoup4 pytz python-dotenv
+
+      # ✅ Step 5: Install Google Chrome (if your script uses Selenium)
+      - name: Install Google Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip xvfb libnss3 libxss1 libxi6 fonts-liberation libu2f-udev
+
+          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get -f install -y
+
+          echo "✅ Chrome Installed Version:"
+          google-chrome --version
+
+      # ✅ Step 6: Run scraper
+      - name: Run scraper
+        env:
+          INPUT_SPREADSHEET_ID: ${{ secrets.INPUT_SPREADSHEET_ID }}
+          OUTPUT_SPREADSHEET_ID: ${{ secrets.OUTPUT_SPREADSHEET_ID }}
+          INPUT_SHEET_NAME: ${{ secrets.INPUT_SHEET_NAME }}
+          OUTPUT_SHEET_NAME: ${{ secrets.OUTPUT_SHEET_NAME }}
+          SERVICE_ACCOUNT_JSON: ${{ secrets.SERVICE_ACCOUNT_JSON }}
+        run: |
+          cd Amz_Mumbai_Availability_pvt
+          python amz_mumbai_availability_pvt.py
