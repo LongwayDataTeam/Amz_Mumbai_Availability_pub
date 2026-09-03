@@ -61,3 +61,13 @@ jobs:
         run: |
           cd Amz_Mumbai_Availability_pvt
           python amz_mumbai_availability_pvt.py
+
+                # Step 7: Upload scraper output
+      - name: Upload scraper output
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-output
+          path: |
+            Amz_Mumbai_Availability_pvt/*.csv
+            Amz_Mumbai_Availability_pvt/*.xlsx
+            Amz_Mumbai_Availability_pvt/*.json
