@@ -106,6 +106,6 @@ jobs:
           name: amazon-mumbai-scraper-results
           path: |
             Amz_Mumbai_Availability_pvt/Amazon_Results.xlsx
-            Amz_Mumbai_Availability_pvt/artifacts/
+            Amz_Delhi_Availability_pvt/artifacts/**/*.png
           if-no-files-found: warn
           retention-days: 7
