@@ -2,56 +2,91 @@ name: Amz_Mumbai_Availability_Scrapper
 
 on:
   schedule:
-    - cron: '0 2-10 * * *'   # Every hour from 8:00 AM to 6:00 PM IST (2:00 to 10:00 UTC)
-  workflow_dispatch:         # manual trigger
+    - cron: '0 2-10 * * *'   # Every hour from 8 AM to 6 PM IST
+  workflow_dispatch:          # Manual trigger
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
 
     steps:
-      # ✅ Step 1: Setup SSH to access private repo
+
+      # ==================================================
+      # 1. Setup SSH to access private repo
+      # ==================================================
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
+
           echo "${{ secrets.PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          eval "$(ssh-agent -s)"
-          ssh-add ~/.ssh/id_ed25519
+
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-      # ✅ Step 2: Clone private repo
+      # ==================================================
+      # 2. Clone private scraper repo
+      # ==================================================
       - name: Clone private repo
         run: |
           git clone git@github.com:LongwayDataTeam/Amz_Mumbai_Availability_pvt.git
 
-      # ✅ Step 3: Set up Python
+      # ==================================================
+      # 3. Setup Python
+      # ==================================================
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.10'
 
-      # ✅ Step 4: Install dependencies
+      # ==================================================
+      # 4. Install Python dependencies
+      # ==================================================
       - name: Install dependencies
+        working-directory: Amz_Mumbai_Availability_pvt
         run: |
-          cd Amz_Mumbai_Availability_pvt
-          pip install --upgrade pip
-          pip install gspread oauth2client pandas openpyxl selenium webdriver-manager beautifulsoup4 pytz python-dotenv
+          python -m pip install --upgrade pip
 
-      # ✅ Step 5: Install Google Chrome (if your script uses Selenium)
+          pip install \
+            gspread \
+            oauth2client \
+            pandas \
+            openpyxl \
+            selenium \
+            webdriver-manager \
+            beautifulsoup4 \
+            pytz \
+            python-dotenv
+
+      # ==================================================
+      # 5. Install Google Chrome
+      # ==================================================
       - name: Install Google Chrome
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget unzip xvfb libnss3 libxss1 libxi6 fonts-liberation libu2f-udev
+
+          sudo apt-get install -y \
+            wget \
+            unzip \
+            xvfb \
+            libnss3 \
+            libxss1 \
+            libxi6 \
+            fonts-liberation \
+            libu2f-udev
 
           wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get -f install -y
 
-          echo "✅ Chrome Installed Version:"
+          sudo dpkg -i google-chrome-stable_current_amd64.deb || \
+            sudo apt-get install -f -y
+
+          echo "Chrome Installed Version:"
           google-chrome --version
 
-      # ✅ Step 6: Run scraper
+      # ==================================================
+      # 6. Run scraper
+      # ==================================================
       - name: Run scraper
+        working-directory: Amz_Mumbai_Availability_pvt
         env:
           INPUT_SPREADSHEET_ID: ${{ secrets.INPUT_SPREADSHEET_ID }}
           OUTPUT_SPREADSHEET_ID: ${{ secrets.OUTPUT_SPREADSHEET_ID }}
@@ -59,15 +94,18 @@ jobs:
           OUTPUT_SHEET_NAME: ${{ secrets.OUTPUT_SHEET_NAME }}
           SERVICE_ACCOUNT_JSON: ${{ secrets.SERVICE_ACCOUNT_JSON }}
         run: |
-          cd Amz_Mumbai_Availability_pvt
           python amz_mumbai_availability_pvt.py
 
-                # Step 7: Upload scraper output
-      - name: Upload scraper output
+      # ==================================================
+      # 7. Upload scraper results & screenshots
+      # ==================================================
+      - name: Upload scraper results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: scraper-output
+          name: amazon-mumbai-scraper-results
           path: |
-            Amz_Mumbai_Availability_pvt/*.csv
-            Amz_Mumbai_Availability_pvt/*.xlsx
-            Amz_Mumbai_Availability_pvt/*.json
+            Amz_Mumbai_Availability_pvt/Amazon_Results.xlsx
+            Amz_Mumbai_Availability_pvt/artifacts/
+          if-no-files-found: warn
+          retention-days: 7
